@@ -124,6 +124,7 @@ export default function FastingPage() {
   const [isActive, setIsActive] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(16);
   const [startDateStr, setStartDateStr] = useState("");
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   // Live progress
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -162,10 +163,9 @@ export default function FastingPage() {
   };
 
   const handleStop = () => {
-    if (confirm("Deseja realmente encerrar seu jejum agora?")) {
-      setIsActive(false);
-      setStartDateStr(getLocalDateTimeString()); // reset for next time
-    }
+    setIsActive(false);
+    setShowStopConfirm(false);
+    setStartDateStr(getLocalDateTimeString());
   };
 
   // Compute end time prediction for the setup form
@@ -240,12 +240,32 @@ export default function FastingPage() {
               Estágio atual: <span className="text-zinc-900">{currentStageName}</span>
             </div>
 
-            <button
-              onClick={handleStop}
-              className="w-full max-w-sm mt-8 bg-zinc-900 hover:bg-zinc-800 text-white shadow-lg shadow-zinc-900/20 py-4 rounded-2xl font-bold text-base transition-all duration-200 active:scale-[0.98]"
-            >
-              Encerrar Jejum Agora
-            </button>
+            {showStopConfirm ? (
+              <div className="w-full max-w-sm mt-8 bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col gap-3">
+                <p className="text-sm font-semibold text-red-700 text-center">Encerrar o jejum agora?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowStopConfirm(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-red-200 text-sm font-bold text-red-500 hover:bg-red-100 transition"
+                  >
+                    Continuar
+                  </button>
+                  <button
+                    onClick={handleStop}
+                    className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition"
+                  >
+                    Encerrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowStopConfirm(true)}
+                className="w-full max-w-sm mt-8 bg-zinc-900 hover:bg-zinc-800 text-white shadow-lg shadow-zinc-900/20 py-4 rounded-2xl font-bold text-base transition-all duration-200 active:scale-[0.98]"
+              >
+                Encerrar Jejum
+              </button>
+            )}
           </div>
         ) : (
           // SETUP FAST VIEW
