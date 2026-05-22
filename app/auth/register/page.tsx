@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 function MailIcon() {
   return (
@@ -28,6 +32,46 @@ function UserIcon() {
 }
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirm) {
+      setError("As senhas não coincidem");
+      return;
+    }
+    if (password.length < 6) {
+      setError("A senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+
+    if (res.ok) {
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      const data = await res.json();
+      setError(data.error ?? "Erro ao criar conta");
+    }
+
+    setLoading(false);
+  }
+
   return (
     <div className="flex flex-col gap-8 w-full max-w-sm mx-auto sm:mx-0">
       <div className="flex flex-col gap-2">
@@ -39,7 +83,13 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <form className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {error && (
+          <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-2xl">
+            {error}
+          </p>
+        )}
+
         <div className="flex flex-col gap-2">
           <label htmlFor="name" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">
             Nome
@@ -52,6 +102,9 @@ export default function RegisterPage() {
               type="text"
               autoComplete="name"
               placeholder="Seu nome"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium"
             />
           </div>
@@ -69,6 +122,9 @@ export default function RegisterPage() {
               type="email"
               autoComplete="email"
               placeholder="hello@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium"
             />
           </div>
@@ -85,7 +141,10 @@ export default function RegisterPage() {
               id="password"
               type="password"
               autoComplete="new-password"
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 6 caracteres"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium"
             />
           </div>
@@ -103,6 +162,9 @@ export default function RegisterPage() {
               type="password"
               autoComplete="new-password"
               placeholder="Repita a senha"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium"
             />
           </div>
@@ -110,11 +172,12 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          className="mt-2 w-full bg-brand hover:bg-brand-dark active:scale-[0.98]
+          disabled={loading}
+          className="mt-2 w-full bg-brand hover:bg-brand-dark active:scale-[0.98] disabled:opacity-60
             text-white font-bold py-3.5 text-sm tracking-wide transition-all duration-200 cursor-pointer rounded-2xl
             shadow-sm shadow-brand/20 hover:shadow-md hover:shadow-brand/30 hover:-translate-y-0.5"
         >
-          Criar minha conta
+          {loading ? "Criando conta..." : "Criar minha conta"}
         </button>
       </form>
 
