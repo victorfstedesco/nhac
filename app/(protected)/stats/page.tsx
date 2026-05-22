@@ -1,34 +1,39 @@
-const calorieGoal = 2000;
+"use client";
 
-const weeklyCalories = [
-  { day: "Seg", calories: 1820 },
-  { day: "Ter", calories: 1540 },
-  { day: "Qua", calories: 2100 },
-  { day: "Qui", calories: 1680 },
-  { day: "Sex", calories: 1420 },
-  { day: "Sáb", calories: 1950 },
-  { day: "Dom", calories: 1320 },
-];
+import { useState, useEffect } from "react";
 
-const weeklyFasting = [
-  { day: "Seg", hours: 16 },
-  { day: "Ter", hours: 18 },
-  { day: "Qua", hours: 0 },
-  { day: "Qui", hours: 16.5 },
-  { day: "Sex", hours: 6.4 },
-  { day: "Sáb", hours: 20 },
-  { day: "Dom", hours: 16 },
-];
-
-const maxCalories  = Math.max(...weeklyCalories.map((d) => d.calories), calorieGoal);
-const avgCalories  = Math.round(weeklyCalories.reduce((s, d) => s + d.calories, 0) / 7);
-const completedFasts = weeklyFasting.filter((d) => d.hours >= 14).length;
-const avgFastHours = (
-  weeklyFasting.filter((d) => d.hours > 0).reduce((s, d) => s + d.hours, 0) /
-  weeklyFasting.filter((d) => d.hours > 0).length
-).toFixed(1);
+type DayData = { date: string; calories: number; label: string };
+type FastingDay = { date: string; hours: number; label: string };
+type Stats = {
+  avgCalories: number;
+  completedFasts: number;
+  avgFastHours: number;
+  calorieGoal: number;
+  days: DayData[];
+  fastingDays: FastingDay[];
+};
 
 export default function StatsPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stats").then((r) => r.json()).then(setStats);
+  }, []);
+
+  if (!stats) {
+    return (
+      <div className="flex flex-col gap-6 pb-10">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Estatísticas</h1>
+          <p className="text-sm font-medium text-zinc-500 mt-0.5">Últimos 7 dias</p>
+        </div>
+        <div className="text-center py-16 text-zinc-400 font-medium text-sm">Carregando...</div>
+      </div>
+    );
+  }
+
+  const { avgCalories, completedFasts, avgFastHours, calorieGoal, days, fastingDays } = stats;
+  const maxCalories = Math.max(...days.map((d) => d.calories), calorieGoal, 1);
   const goalLinePercent = (calorieGoal / maxCalories) * 100;
 
   return (
@@ -38,15 +43,13 @@ export default function StatsPage() {
         <p className="text-sm font-medium text-zinc-500 mt-0.5">Últimos 7 dias</p>
       </div>
 
-      {/* aggregate */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Média diária", value: avgCalories.toLocaleString("pt-BR"), unit: "kcal" },
           { label: "Jejuns ok", value: `${completedFasts}`, unit: "esta semana" },
           { label: "Média jejum", value: `${avgFastHours}h`, unit: "por dia" },
         ].map(({ label, value, unit }) => (
-          <div key={label} className="bg-white border border-zinc-100 rounded-2xl px-4 py-4
-            shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-1">
+          <div key={label} className="bg-white border border-zinc-100 rounded-2xl px-4 py-4 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-1">
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider leading-none">{label}</p>
             <p className="text-2xl font-black text-zinc-900 leading-tight mt-1">{value}</p>
             <p className="text-[11px] text-zinc-400 font-medium">{unit}</p>
@@ -54,7 +57,6 @@ export default function StatsPage() {
         ))}
       </div>
 
-      {/* calorie chart */}
       <div className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-zinc-900">Calorias por dia</h2>
@@ -69,25 +71,33 @@ export default function StatsPage() {
         </div>
 
         <div className="relative h-40 flex items-end gap-2">
-          <div className="absolute inset-x-0 border-t-2 border-dashed border-zinc-200 pointer-events-none"
-            style={{ bottom: `${goalLinePercent}%` }} />
-          {weeklyCalories.map(({ day, calories }) => {
-            const h = (calories / maxCalories) * 100;
+          <div
+            className="absolute inset-x-0 border-t-2 border-dashed border-zinc-200 pointer-events-none"
+            style={{ bottom: `${goalLinePercent}%` }}
+          />
+          {days.map(({ label, calories }) => {
+            const h = maxCalories > 0 ? (calories / maxCalories) * 100 : 0;
             const over = calories > calorieGoal;
             return (
-              <div key={day} className="flex-1 flex flex-col items-center gap-1.5">
+              <div key={label} className="flex-1 flex flex-col items-center gap-1.5">
                 <div className="w-full flex flex-col justify-end" style={{ height: 140 }}>
-                  <div className={`w-full rounded-t-lg transition-all duration-700 ${over ? "bg-amber-400" : "bg-gradient-to-t from-brand to-brand-dark"}`}
-                    style={{ height: `${h}%` }} title={`${calories} kcal`} />
+                  {calories > 0 ? (
+                    <div
+                      className={`w-full rounded-t-lg transition-all duration-700 ${over ? "bg-amber-400" : "bg-gradient-to-t from-brand to-brand-dark"}`}
+                      style={{ height: `${h}%` }}
+                      title={`${calories} kcal`}
+                    />
+                  ) : (
+                    <div className="w-full h-1 rounded bg-zinc-100" />
+                  )}
                 </div>
-                <span className="text-[10px] font-bold text-zinc-400">{day}</span>
+                <span className="text-[10px] font-bold text-zinc-400">{label}</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* fasting chart */}
       <div className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-zinc-900">Horas de jejum por dia</h2>
@@ -95,20 +105,23 @@ export default function StatsPage() {
         </div>
 
         <div className="relative h-40 flex items-end gap-2">
-          {weeklyFasting.map(({ day, hours }) => {
+          {fastingDays.map(({ label, hours }) => {
             const h = (hours / 24) * 100;
             const met = hours >= 14;
             return (
-              <div key={day} className="flex-1 flex flex-col items-center gap-1.5">
+              <div key={label} className="flex-1 flex flex-col items-center gap-1.5">
                 <div className="w-full flex flex-col justify-end" style={{ height: 140 }}>
                   {hours > 0 ? (
-                    <div className={`w-full rounded-t-lg transition-all duration-700 ${met ? "bg-gradient-to-t from-emerald-500 to-emerald-400" : "bg-zinc-200"}`}
-                      style={{ height: `${h}%` }} title={`${hours}h`} />
+                    <div
+                      className={`w-full rounded-t-lg transition-all duration-700 ${met ? "bg-gradient-to-t from-emerald-500 to-emerald-400" : "bg-zinc-200"}`}
+                      style={{ height: `${h}%` }}
+                      title={`${hours}h`}
+                    />
                   ) : (
                     <div className="w-full h-1 rounded bg-zinc-100" />
                   )}
                 </div>
-                <span className="text-[10px] font-bold text-zinc-400">{day}</span>
+                <span className="text-[10px] font-bold text-zinc-400">{label}</span>
               </div>
             );
           })}
