@@ -1,4 +1,4 @@
-# nhác — Registro de Calorias e Jejum
+# nhac — Registro de Calorias e Jejum
 
 Aplicação web full-stack para acompanhamento de consumo calórico e jejum intermitente. Permite registrar refeições, definir metas diárias, acompanhar ciclos de jejum e visualizar progresso semanal em gráficos.
 
