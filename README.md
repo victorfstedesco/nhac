@@ -12,19 +12,20 @@ Aplicação web full-stack para acompanhamento de consumo calórico e jejum inte
 |--------|-----------|
 | Framework | Next.js 16 (App Router) |
 | Linguagem | TypeScript |
-| Banco de dados | SQLite via Prisma 7 + better-sqlite3 |
+| Banco de dados | PostgreSQL (Supabase) via Prisma 7 + @prisma/adapter-pg |
 | Autenticação | JWT (jose) + bcryptjs, cookie httpOnly |
+| Validação | Zod (client + server) |
 | Estilização | Tailwind CSS |
-| Gráficos | Chart.js (via canvas) |
+| Gráficos | Barras CSS customizadas |
 
 ---
 
 ## Funcionalidades
 
-- **Autenticação** — cadastro, login, logout e recuperação de senha
+- **Autenticação** — cadastro, login, logout e troca de senha
 - **Refeições (CRUD)** — criar, listar (com filtro por data), editar e excluir refeições
 - **Meta calórica** — definir e editar meta diária; barra de progresso no dashboard
-- **Jejum** — iniciar/encerrar ciclos (16:8, 18:6, 20:4, 24h ou personalizado), apenas um ativo por vez
+- **Jejum** — iniciar/encerrar ciclos (12:12, 14:10, 16:8, 18:6, 24h), apenas um ativo por vez
 - **Histórico de jejuns** — listagem com status, duração e protocolo
 - **Resumo semanal** — gráfico de calorias por dia, indicador de horas de jejum, médias agregadas
 - **Exportação** — download dos dados em CSV (em Configurações)
@@ -37,6 +38,7 @@ Aplicação web full-stack para acompanhamento de consumo calórico e jejum inte
 
 - Node.js 20+
 - npm 10+
+- Conta no [Supabase](https://supabase.com) (gratuita)
 
 ### Passos
 
@@ -50,10 +52,10 @@ npm install
 
 # 3. Configure as variáveis de ambiente
 cp .env.example .env
-# Edite .env e defina um JWT_SECRET seguro
+# Preencha DATABASE_URL e JWT_SECRET conforme instruções abaixo
 
-# 4. Crie o banco de dados e execute as migrations
-npx prisma migrate dev
+# 4. Execute as migrations no banco de dados
+npx prisma migrate dev --name init
 
 # 5. Inicie o servidor de desenvolvimento
 npm run dev
@@ -63,20 +65,32 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Configurando o banco de dados (Supabase)
+
+1. Acesse [supabase.com](https://supabase.com) e crie um projeto gratuito.
+2. No painel do projeto, vá em **Settings → Database**.
+3. Em **Connection string → URI**, copie a string de conexão direta (porta **5432**).
+4. Cole no `.env` como `DATABASE_URL`, substituindo `[YOUR-PASSWORD]` pela sua senha.
+5. Execute `npx prisma migrate dev --name init` para criar as tabelas.
+
+---
+
 ## Variáveis de ambiente
 
 | Variável | Descrição | Exemplo |
 |----------|-----------|---------|
-| `DATABASE_URL` | Caminho do arquivo SQLite | `file:./dev.db` |
-| `JWT_SECRET` | Chave secreta para assinar tokens JWT | `minha-chave-secreta` |
+| `DATABASE_URL` | Connection string do Supabase (PostgreSQL) | `postgresql://postgres:senha@ref.supabase.co:5432/postgres` |
+| `JWT_SECRET` | Chave secreta para assinar tokens JWT | `minha-chave-secreta-longa` |
 
 Veja `.env.example` para referência. **Nunca commite o arquivo `.env`** — ele já está no `.gitignore`.
 
 ---
 
-## Aplicação em produção
+## Deploy (Vercel)
 
-> Link será adicionado após o deploy na Vercel.
+1. Importe o repositório na Vercel.
+2. Em **Settings → Environment Variables**, adicione `DATABASE_URL` e `JWT_SECRET`.
+3. Faça o deploy normalmente — a Vercel detecta Next.js automaticamente.
 
 ---
 

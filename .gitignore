@@ -45,6 +45,6 @@ next-env.d.ts
 
 /app/generated/prisma
 
-# database
+# database (local SQLite, se houver)
 *.db
 *.db-journal
