@@ -9,17 +9,23 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
 
-  const meals = await prisma.meal.findMany({
-    where: { userId: session.userId },
-    orderBy: { date: "desc" },
-    select: { type: true, description: true, calories: true, date: true },
-  });
+  let meals, fastingSessions;
+  try {
+    meals = await prisma.meal.findMany({
+      where: { userId: session.userId },
+      orderBy: { date: "desc" },
+      select: { type: true, description: true, calories: true, date: true },
+    });
 
-  const fastingSessions = await prisma.fastingSession.findMany({
-    where: { userId: session.userId },
-    orderBy: { startTime: "desc" },
-    select: { protocol: true, targetHours: true, startTime: true, endTime: true, status: true },
-  });
+    fastingSessions = await prisma.fastingSession.findMany({
+      where: { userId: session.userId },
+      orderBy: { startTime: "desc" },
+      select: { protocol: true, targetHours: true, startTime: true, endTime: true, status: true },
+    });
+  } catch (err) {
+    console.error("[export]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
 
   if (format === "csv") {
     const mealRows = meals.map((m) =>

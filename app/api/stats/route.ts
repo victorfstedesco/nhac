@@ -6,6 +6,7 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  try {
   const todayUTC = new Date().toISOString().split("T")[0];
   const sevenDaysAgo = new Date(`${todayUTC}T00:00:00.000Z`);
   sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6);
@@ -89,4 +90,8 @@ export async function GET() {
     days,
     fastingDays,
   });
+  } catch (err) {
+    console.error("[stats]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
 }

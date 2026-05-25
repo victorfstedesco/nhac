@@ -22,24 +22,29 @@ export async function POST(req: NextRequest) {
 
   const { name, email, password } = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
+    }
+
+    const hashed = await hash(password, 10);
+    const user = await prisma.user.create({
+      data: { name, email, password: hashed },
+    });
+
+    const token = await signToken({ userId: user.id, email: user.email });
+
+    const res = NextResponse.json({ id: user.id, name: user.name, email: user.email }, { status: 201 });
+    res.cookies.set("nhac_token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return res;
+  } catch (err) {
+    console.error("[register]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
-
-  const hashed = await hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, password: hashed },
-  });
-
-  const token = await signToken({ userId: user.id, email: user.email });
-
-  const res = NextResponse.json({ id: user.id, name: user.name, email: user.email }, { status: 201 });
-  res.cookies.set("nhac_token", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  return res;
 }

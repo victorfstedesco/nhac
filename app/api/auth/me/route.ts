@@ -6,12 +6,17 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, name: true, email: true, calorieGoal: true, createdAt: true },
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, name: true, email: true, calorieGoal: true, createdAt: true },
+    });
 
-  if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
 
-  return NextResponse.json(user);
+    return NextResponse.json(user);
+  } catch (err) {
+    console.error("[me]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
 }
