@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/auth/register",
   "/api/auth/login",
   "/api/auth/register",
+  "/tech",
 ];
 
 export async function proxy(req: NextRequest) {
