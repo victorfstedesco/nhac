@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { FastingStartSchema } from "@/lib/validations";
 
 const mockStagesTemplate = [
   { name: "Açúcar no sangue cai", hours: 2 },
@@ -102,15 +103,18 @@ export default function FastingPage() {
   const [remainingMs, setRemainingMs] = useState(0);
   const [percent, setPercent] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [startError, setStartError] = useState("");
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     setStartDateStr(getLocalDateTimeString());
-    fetch("/api/fasting").then((r) => r.json()).then((s) => {
+    Promise.all([
+      fetch("/api/fasting").then((r) => r.json()),
+      fetch("/api/fasting/history").then((r) => r.json()),
+    ]).then(([s, h]) => {
       if (s) setActiveFast(s);
-    });
-    fetch("/api/fasting/history").then((r) => r.json()).then((h) => {
       if (Array.isArray(h)) setHistory(h.slice(0, 3));
-    });
+    }).finally(() => setPageLoading(false));
   }, []);
 
   useEffect(() => {
@@ -132,16 +136,31 @@ export default function FastingPage() {
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setStartError("");
+
     const proto = FASTING_PROTOCOLS.find((p) => p.hours === selectedGoal);
+    const validation = FastingStartSchema.safeParse({
+      protocol: proto?.label ?? `${selectedGoal}h`,
+      targetHours: selectedGoal,
+      startTime: new Date(startDateStr).toISOString(),
+    });
+    if (!validation.success) {
+      setStartError(validation.error.issues[0].message);
+      return;
+    }
+
+    setLoading(true);
     const res = await fetch("/api/fasting", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ protocol: proto?.label ?? `${selectedGoal}h`, targetHours: selectedGoal, startTime: new Date(startDateStr).toISOString() }),
+      body: JSON.stringify(validation.data),
     });
     if (res.ok) {
       const s = await res.json();
       setActiveFast(s);
+    } else {
+      const data = await res.json();
+      setStartError(data.error ?? "Erro ao iniciar jejum");
     }
     setLoading(false);
   }
@@ -201,7 +220,12 @@ export default function FastingPage() {
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100 p-6 sm:p-10 relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand/10 blur-[60px] rounded-full pointer-events-none" />
 
-        {activeFast ? (
+        {pageLoading ? (
+          <div className="flex flex-col items-center gap-4 py-10">
+            <div className="w-52 h-52 rounded-full bg-zinc-100 animate-pulse" />
+            <div className="h-4 w-32 bg-zinc-100 rounded animate-pulse" />
+          </div>
+        ) : activeFast ? (
           <div className="flex flex-col items-center">
             <div className="flex flex-col items-center gap-1 mb-4">
               <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-widest rounded-full ring-1 ring-emerald-600/20 flex items-center gap-2">
@@ -233,6 +257,9 @@ export default function FastingPage() {
           </div>
         ) : (
           <form onSubmit={handleStart} className="flex flex-col gap-8 max-w-md mx-auto">
+            {startError && (
+              <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-2xl">{startError}</p>
+            )}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-zinc-900">Escolha o Protocolo</label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">

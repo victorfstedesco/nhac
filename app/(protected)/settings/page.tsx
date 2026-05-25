@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { SettingsSchema, ChangePasswordSchema } from "@/lib/validations";
 
 const LogoutIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -31,6 +32,11 @@ export default function SettingsPage() {
   const [goal, setGoal] = useState(2000);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  // — page load
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   // — trocar senha
   const [currentPassword, setCurrentPassword] = useState("");
@@ -41,46 +47,68 @@ export default function SettingsPage() {
   const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings").then((r) => r.json()).then((u: User) => {
-      setUser(u);
-      setName(u.name);
-      setEmail(u.email);
-      setGoal(u.calorieGoal);
-    });
+    fetch("/api/settings")
+      .then((r) => {
+        if (!r.ok) throw new Error("Erro ao carregar configurações");
+        return r.json();
+      })
+      .then((u: User) => {
+        setUser(u);
+        setName(u.name);
+        setEmail(u.email);
+        setGoal(u.calorieGoal);
+      })
+      .catch(() => setPageError("Não foi possível carregar as configurações. Tente recarregar."))
+      .finally(() => setPageLoading(false));
   }, []);
 
   async function handleSave() {
+    setSaveError("");
+
+    const validation = SettingsSchema.safeParse({ name, email, calorieGoal: goal });
+    if (!validation.success) {
+      setSaveError(validation.error.issues[0].message);
+      return;
+    }
+
     setLoading(true);
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, calorieGoal: goal }),
+      body: JSON.stringify(validation.data),
     });
     if (res.ok) {
       const updated = await res.json();
       setUser(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } else {
+      const data = await res.json();
+      setSaveError(data.error ?? "Erro ao salvar alterações");
     }
     setLoading(false);
   }
 
   async function handleChangePassword() {
     setPwError("");
+
     if (newPassword !== confirmPassword) {
       setPwError("As senhas não coincidem");
       return;
     }
-    if (newPassword.length < 6) {
-      setPwError("A nova senha deve ter no mínimo 6 caracteres");
+
+    const validation = ChangePasswordSchema.safeParse({ currentPassword, newPassword });
+    if (!validation.success) {
+      setPwError(validation.error.issues[0].message);
       return;
     }
+
     setPwLoading(true);
     try {
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify(validation.data),
       });
       const data = await res.json();
       if (res.ok) {
@@ -107,6 +135,33 @@ export default function SettingsPage() {
   const inputClass = "flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium";
   const fieldWrap = "group flex items-center border border-zinc-200 bg-zinc-50 px-4 py-3 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200";
   const labelClass = "text-xs font-bold text-zinc-600 uppercase tracking-widest";
+
+  if (pageLoading) {
+    return (
+      <div className="flex flex-col gap-6 pb-10 max-w-lg">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Configurações</h1>
+          <p className="text-sm font-medium text-zinc-500 mt-0.5">Perfil e preferências</p>
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-40 bg-zinc-100 rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="flex flex-col gap-6 pb-10 max-w-lg">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Configurações</h1>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+          <p className="text-sm text-red-600 font-medium">{pageError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-10 max-w-lg">
@@ -154,7 +209,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-1.5">
           <label htmlFor="goal" className={labelClass}>Calorias diárias</label>
           <div className={`${fieldWrap} gap-3`}>
-            <input id="goal" type="number" min="500" max="6000" step="50" value={goal}
+            <input id="goal" type="number" min="500" max="10000" step="50" value={goal}
               onChange={(e) => setGoal(Number(e.target.value))}
               className="flex-1 bg-transparent text-sm font-bold text-zinc-900 outline-none tabular-nums" />
             <span className="text-sm font-medium text-zinc-400 shrink-0">kcal / dia</span>
@@ -172,6 +227,10 @@ export default function SettingsPage() {
           ))}
         </div>
       </section>
+
+      {saveError && (
+        <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-2xl">{saveError}</p>
+      )}
 
       <button type="button" onClick={handleSave} disabled={loading}
         className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-60 ${

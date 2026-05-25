@@ -37,12 +37,23 @@ export default function MealsPage() {
   const [calorieGoal, setCalorieGoal] = useState(2000);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const dateStr = dateToISO(currentDate);
 
   const loadMeals = useCallback(async () => {
-    const res = await fetch(`/api/meals?date=${dateStr}`);
-    if (res.ok) setMeals(await res.json());
+    setPageLoading(true);
+    setPageError(null);
+    try {
+      const res = await fetch(`/api/meals?date=${dateStr}`);
+      if (!res.ok) throw new Error("Erro ao carregar refeições");
+      setMeals(await res.json());
+    } catch {
+      setPageError("Não foi possível carregar as refeições. Tente novamente.");
+    } finally {
+      setPageLoading(false);
+    }
   }, [dateStr]);
 
   useEffect(() => {
@@ -109,7 +120,20 @@ export default function MealsPage() {
         </div>
       </div>
 
-      {meals.length === 0 ? (
+      {pageLoading ? (
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-zinc-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : pageError ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <p className="text-sm text-red-600 font-medium">{pageError}</p>
+          <button onClick={loadMeals} className="mt-3 text-sm font-bold text-red-600 hover:text-red-700 underline transition">
+            Tentar novamente
+          </button>
+        </div>
+      ) : meals.length === 0 ? (
         <div className="bg-white border border-zinc-100 rounded-2xl p-12 text-center shadow-[0_4px_20px_rgb(0,0,0,0.04)]">
           <p className="text-zinc-400 font-medium text-sm">Nenhuma refeição registrada neste dia.</p>
           <Link href="/meals/new" className="mt-4 inline-block text-sm font-bold text-brand hover:text-brand-dark transition">

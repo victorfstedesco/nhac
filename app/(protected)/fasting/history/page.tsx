@@ -21,11 +21,26 @@ function formatDuration(ms: number) {
 
 export default function FastingHistoryPage() {
   const [history, setHistory] = useState<FastingSession[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  function loadHistory() {
+    setPageLoading(true);
+    setPageError(null);
+    fetch("/api/fasting/history")
+      .then((r) => {
+        if (!r.ok) throw new Error("Erro ao carregar histórico");
+        return r.json();
+      })
+      .then((h) => {
+        if (Array.isArray(h)) setHistory(h);
+      })
+      .catch(() => setPageError("Não foi possível carregar o histórico. Tente novamente."))
+      .finally(() => setPageLoading(false));
+  }
 
   useEffect(() => {
-    fetch("/api/fasting/history").then((r) => r.json()).then((h) => {
-      if (Array.isArray(h)) setHistory(h);
-    });
+    loadHistory();
   }, []);
 
   const completedCount = history.filter((f) => f.status === "completed").length;
@@ -62,7 +77,25 @@ export default function FastingHistoryPage() {
         <div className="px-5 py-4 border-b border-zinc-50">
           <h2 className="text-sm font-bold text-zinc-900">Todos os registros</h2>
         </div>
-        {history.length === 0 ? (
+
+        {pageLoading ? (
+          <div className="flex flex-col gap-0">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-zinc-50 last:border-0">
+                <div className="w-10 h-8 bg-zinc-100 rounded animate-pulse shrink-0" />
+                <div className="flex-1 h-6 bg-zinc-100 rounded animate-pulse" />
+                <div className="w-16 h-6 bg-zinc-100 rounded animate-pulse shrink-0" />
+              </div>
+            ))}
+          </div>
+        ) : pageError ? (
+          <div className="px-5 py-10 text-center">
+            <p className="text-sm text-red-500 font-medium">{pageError}</p>
+            <button onClick={loadHistory} className="mt-3 text-sm font-bold text-red-500 hover:text-red-600 underline transition">
+              Tentar novamente
+            </button>
+          </div>
+        ) : history.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm text-zinc-400 font-medium">Nenhum jejum registrado ainda.</p>
           </div>

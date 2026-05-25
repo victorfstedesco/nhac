@@ -74,15 +74,29 @@ export default function DashboardPage() {
   const [fasting, setFasting] = useState<FastingSession | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [tick, setTick] = useState(0);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
   const todayISO = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    fetch("/api/auth/me").then((r) => r.json()).then(setUser);
-    fetch(`/api/meals?date=${todayISO}`).then((r) => r.json()).then(setMeals);
-    fetch("/api/fasting").then((r) => r.json()).then(setFasting);
-    fetch("/api/stats").then((r) => r.json()).then(setStats);
+    setPageLoading(true);
+    setPageError(null);
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.json()),
+      fetch(`/api/meals?date=${todayISO}`).then((r) => r.json()),
+      fetch("/api/fasting").then((r) => r.json()),
+      fetch("/api/stats").then((r) => r.json()),
+    ])
+      .then(([u, m, f, s]) => {
+        setUser(u);
+        if (Array.isArray(m)) setMeals(m);
+        setFasting(f ?? null);
+        setStats(s);
+      })
+      .catch(() => setPageError("Não foi possível carregar os dados. Tente recarregar a página."))
+      .finally(() => setPageLoading(false));
   }, [todayISO]);
 
   useEffect(() => {
@@ -90,6 +104,9 @@ export default function DashboardPage() {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [fasting]);
+
+  // suppress unused variable warning
+  void tick;
 
   const calorieGoal = user?.calorieGoal ?? 2000;
   const totalCals = meals.reduce((s, m) => s + m.calories, 0);
@@ -99,6 +116,36 @@ export default function DashboardPage() {
   const fastingDisplay = fasting
     ? formatElapsed(fasting.startTime, fasting.targetHours)
     : null;
+
+  if (pageLoading) {
+    return (
+      <div className="flex flex-col gap-8 pb-10">
+        <div className="flex flex-col gap-1">
+          <div className="h-4 w-32 bg-zinc-100 rounded animate-pulse" />
+          <div className="h-10 w-64 bg-zinc-100 rounded animate-pulse mt-1" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="md:col-span-3 h-48 bg-zinc-100 rounded-3xl animate-pulse" />
+          <div className="md:col-span-2 h-48 bg-zinc-100 rounded-3xl animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-zinc-100 rounded-3xl animate-pulse" />)}
+        </div>
+        <div className="h-48 bg-zinc-100 rounded-3xl animate-pulse" />
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="flex flex-col gap-4 pb-10">
+        <p className="text-sm text-zinc-500 uppercase tracking-widest font-semibold capitalize">{today}</p>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+          <p className="text-sm text-red-600 font-medium">{pageError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 pb-10">

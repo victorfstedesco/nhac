@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { RegisterSchema } from "@/lib/validations";
 
 function MailIcon() {
   return (
@@ -48,8 +49,10 @@ export default function RegisterPage() {
       setError("As senhas não coincidem");
       return;
     }
-    if (password.length < 6) {
-      setError("A senha deve ter no mínimo 6 caracteres");
+
+    const validation = RegisterSchema.safeParse({ name, email, password });
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
       return;
     }
 
@@ -58,7 +61,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(validation.data),
     });
 
     if (res.ok) {

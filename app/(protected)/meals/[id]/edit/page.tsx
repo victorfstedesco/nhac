@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
+import { MealSchema } from "@/lib/validations";
 
-const mealTypes = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Ceia"];
+const mealTypes = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Ceia"] as const;
 const mealTypeStyle: Record<string, string> = {
   "Café da manhã": "text-amber-700 bg-amber-50 ring-1 ring-amber-600/20",
   Almoço:          "text-emerald-700 bg-emerald-50 ring-1 ring-emerald-600/20",
@@ -33,11 +34,12 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     fetch(`/api/meals/${id}`).then(async (r) => {
-      if (!r.ok) { setNotFound(true); return; }
+      if (!r.ok) { setNotFound(true); setPageLoading(false); return; }
       const meal = await r.json();
       setSelectedType(meal.type);
       setDescription(meal.description);
@@ -45,20 +47,36 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
       const d = new Date(meal.date);
       setDate(d.toISOString().split("T")[0]);
       setTime(d.toTimeString().slice(0, 5));
+      setPageLoading(false);
+    }).catch(() => {
+      setNotFound(true);
+      setPageLoading(false);
     });
   }, [id]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     const datetime = new Date(`${date}T${time}`).toISOString();
+
+    const validation = MealSchema.safeParse({
+      type: selectedType,
+      description,
+      calories: Number(calories),
+      date: datetime,
+    });
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
+      return;
+    }
+
+    setLoading(true);
 
     const res = await fetch(`/api/meals/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: selectedType, description, calories: Number(calories), date: datetime }),
+      body: JSON.stringify(validation.data),
     });
 
     if (res.ok) {
@@ -74,6 +92,22 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
   async function handleDelete() {
     await fetch(`/api/meals/${id}`, { method: "DELETE" });
     router.push("/meals");
+  }
+
+  if (pageLoading) {
+    return (
+      <div className="flex flex-col gap-8 pb-10 max-w-lg">
+        <div>
+          <Link href="/meals" className="text-xs font-bold text-zinc-400 hover:text-zinc-700 uppercase tracking-wider transition">← Voltar</Link>
+          <div className="h-9 w-48 bg-zinc-100 rounded-xl animate-pulse mt-2" />
+        </div>
+        <div className="flex flex-col gap-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-14 bg-zinc-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (notFound) {
@@ -139,7 +173,7 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
         <div className="flex flex-col gap-2">
           <label htmlFor="calories" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Calorias</label>
           <div className="group flex items-center gap-3 border border-zinc-200 bg-zinc-50 px-4 py-3.5 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200">
-            <input id="calories" type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} required
+            <input id="calories" type="number" min="0" max="10000" value={calories} onChange={(e) => setCalories(e.target.value)} required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none" />
             <span className="text-sm font-medium text-zinc-400 shrink-0">kcal</span>
           </div>

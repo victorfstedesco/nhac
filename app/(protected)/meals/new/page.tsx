@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MealSchema } from "@/lib/validations";
 
-const mealTypes = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Ceia"];
+const mealTypes = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Ceia"] as const;
 const mealTypeStyle: Record<string, string> = {
   "Café da manhã": "text-amber-700 bg-amber-50 ring-1 ring-amber-600/20",
   Almoço:          "text-emerald-700 bg-emerald-50 ring-1 ring-emerald-600/20",
@@ -26,14 +27,26 @@ export default function NewMealPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     const datetime = new Date(`${date}T${time}`).toISOString();
+
+    const validation = MealSchema.safeParse({
+      type: selectedType,
+      description,
+      calories: Number(calories),
+      date: datetime,
+    });
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
+      return;
+    }
+
+    setLoading(true);
 
     const res = await fetch("/api/meals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: selectedType, description, calories: Number(calories), date: datetime }),
+      body: JSON.stringify(validation.data),
     });
 
     if (res.ok) {
@@ -88,7 +101,7 @@ export default function NewMealPage() {
         <div className="flex flex-col gap-2">
           <label htmlFor="calories" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Calorias</label>
           <div className="group flex items-center gap-3 border border-zinc-200 bg-zinc-50 px-4 py-3.5 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200">
-            <input id="calories" type="number" min="0" placeholder="0"
+            <input id="calories" type="number" min="0" max="10000" placeholder="0"
               value={calories} onChange={(e) => setCalories(e.target.value)} required
               className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400" />
             <span className="text-sm font-medium text-zinc-400 shrink-0">kcal</span>

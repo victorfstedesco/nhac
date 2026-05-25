@@ -15,10 +15,40 @@ type Stats = {
 
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  function loadStats() {
+    setPageError(null);
+    setStats(null);
+    fetch("/api/stats")
+      .then((r) => {
+        if (!r.ok) throw new Error("Erro ao carregar estatísticas");
+        return r.json();
+      })
+      .then(setStats)
+      .catch(() => setPageError("Não foi possível carregar as estatísticas. Tente novamente."));
+  }
 
   useEffect(() => {
-    fetch("/api/stats").then((r) => r.json()).then(setStats);
+    loadStats();
   }, []);
+
+  if (pageError) {
+    return (
+      <div className="flex flex-col gap-6 pb-10">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Estatísticas</h1>
+          <p className="text-sm font-medium text-zinc-500 mt-0.5">Últimos 7 dias</p>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+          <p className="text-sm text-red-600 font-medium">{pageError}</p>
+          <button onClick={loadStats} className="mt-3 text-sm font-bold text-red-600 hover:text-red-700 underline transition">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!stats) {
     return (
@@ -27,7 +57,11 @@ export default function StatsPage() {
           <h1 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Estatísticas</h1>
           <p className="text-sm font-medium text-zinc-500 mt-0.5">Últimos 7 dias</p>
         </div>
-        <div className="text-center py-16 text-zinc-400 font-medium text-sm">Carregando...</div>
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-zinc-100 rounded-2xl animate-pulse" />)}
+        </div>
+        <div className="h-64 bg-zinc-100 rounded-2xl animate-pulse" />
+        <div className="h-64 bg-zinc-100 rounded-2xl animate-pulse" />
       </div>
     );
   }
