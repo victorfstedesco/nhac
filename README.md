@@ -100,7 +100,7 @@ Veja `.env.example` para referência. **Nunca commite o arquivo `.env`** — ele
 ![Dashboard](docs/dashboard.png)
 
 ### Refeições
-![Refeições](docs/refeições.png)
+![Refeições](docs/refeicoes.png)
 
 ### Jejum
 ![Jejum](docs/jejum.png)
