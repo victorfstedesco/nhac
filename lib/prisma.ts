@@ -5,7 +5,10 @@ import { Pool } from "pg";
 function createPrismaClient() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }, // Supabase requer SSL
+    ssl: { rejectUnauthorized: false },
+    max: 1, // serverless: evita estourar o limite de conexões do Supabase
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
