@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SettingsSchema } from "@/lib/validations";
 
 export async function GET() {
   const session = await getSession();
@@ -20,14 +21,29 @@ export async function PUT(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { name, email, calorieGoal } = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+
+  const parsed = SettingsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0].message },
+      { status: 400 }
+    );
+  }
+
+  const { name, email, calorieGoal } = parsed.data;
 
   const user = await prisma.user.update({
     where: { id: session.userId },
     data: {
-      ...(name && { name }),
-      ...(email && { email }),
-      ...(calorieGoal !== undefined && { calorieGoal: Number(calorieGoal) }),
+      ...(name !== undefined && { name }),
+      ...(email !== undefined && { email }),
+      ...(calorieGoal !== undefined && { calorieGoal }),
     },
     select: { id: true, name: true, email: true, calorieGoal: true },
   });

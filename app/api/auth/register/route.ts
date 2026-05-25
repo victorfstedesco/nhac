@@ -2,13 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
+import { RegisterSchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest) {
-  const { name, email, password } = await req.json();
-
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
+
+  const parsed = RegisterSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0].message },
+      { status: 400 }
+    );
+  }
+
+  const { name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
