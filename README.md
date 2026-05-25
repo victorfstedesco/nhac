@@ -97,13 +97,13 @@ Veja `.env.example` para referência. **Nunca commite o arquivo `.env`** — ele
 ## Screenshots
 
 ### Dashboard
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard](docs/dashboard.png)
 
 ### Refeições
-![Refeições](docs/screenshots/meals.png)
+![Refeições](docs/refeições.png)
 
 ### Jejum
-![Jejum](docs/screenshots/fasting.png)
+![Jejum](docs/jejum.png)
 
 ### Estatísticas
-![Estatísticas](docs/screenshots/stats.png)
+![Estatísticas](docs/estatisticas.png)
