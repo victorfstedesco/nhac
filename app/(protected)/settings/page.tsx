@@ -23,12 +23,22 @@ type User = { id: string; name: string; email: string; calorieGoal: number };
 
 export default function SettingsPage() {
   const router = useRouter();
+
+  // — perfil
   const [user, setUser] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [goal, setGoal] = useState(2000);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // — trocar senha
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then((u: User) => {
@@ -55,11 +65,48 @@ export default function SettingsPage() {
     setLoading(false);
   }
 
+  async function handleChangePassword() {
+    setPwError("");
+    if (newPassword !== confirmPassword) {
+      setPwError("As senhas não coincidem");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPwError("A nova senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPwSaved(true);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => setPwSaved(false), 2500);
+      } else {
+        setPwError(data.error ?? "Erro ao alterar senha");
+      }
+    } catch {
+      setPwError("Erro ao processar solicitação");
+    }
+    setPwLoading(false);
+  }
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/auth/login");
     router.refresh();
   }
+
+  const inputClass = "flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none placeholder:text-zinc-400 placeholder:font-medium";
+  const fieldWrap = "group flex items-center border border-zinc-200 bg-zinc-50 px-4 py-3 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200";
+  const labelClass = "text-xs font-bold text-zinc-600 uppercase tracking-widest";
 
   return (
     <div className="flex flex-col gap-6 pb-10 max-w-lg">
@@ -68,6 +115,7 @@ export default function SettingsPage() {
         <p className="text-sm font-medium text-zinc-500 mt-0.5">Perfil e preferências</p>
       </div>
 
+      {/* — Perfil — */}
       <section className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-5">
         <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Perfil</h2>
 
@@ -87,16 +135,16 @@ export default function SettingsPage() {
             { id: "email", label: "E-mail", type: "email", value: email, onChange: setEmail },
           ].map(({ id, label, type, value, onChange }) => (
             <div key={id} className="flex flex-col gap-1.5">
-              <label htmlFor={id} className="text-xs font-bold text-zinc-600 uppercase tracking-widest">{label}</label>
-              <div className="group flex items-center border border-zinc-200 bg-zinc-50 px-4 py-3 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200">
-                <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)}
-                  className="flex-1 bg-transparent text-sm font-semibold text-zinc-900 outline-none" />
+              <label htmlFor={id} className={labelClass}>{label}</label>
+              <div className={fieldWrap}>
+                <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} />
               </div>
             </div>
           ))}
         </div>
       </section>
 
+      {/* — Meta calórica — */}
       <section className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-5">
         <div>
           <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Meta calórica</h2>
@@ -104,8 +152,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="goal" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Calorias diárias</label>
-          <div className="group flex items-center gap-3 border border-zinc-200 bg-zinc-50 px-4 py-3 rounded-2xl focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200">
+          <label htmlFor="goal" className={labelClass}>Calorias diárias</label>
+          <div className={`${fieldWrap} gap-3`}>
             <input id="goal" type="number" min="500" max="6000" step="50" value={goal}
               onChange={(e) => setGoal(Number(e.target.value))}
               className="flex-1 bg-transparent text-sm font-bold text-zinc-900 outline-none tabular-nums" />
@@ -133,6 +181,59 @@ export default function SettingsPage() {
         }`}>
         {saved ? "✓ Salvo com sucesso" : loading ? "Salvando..." : "Salvar alterações"}
       </button>
+
+      {/* — Segurança — */}
+      <section className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.04)] flex flex-col gap-5">
+        <div>
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Segurança</h2>
+          <p className="text-xs font-medium text-zinc-400 mt-1">Altere sua senha a qualquer momento.</p>
+        </div>
+
+        {pwError && (
+          <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-2xl">
+            {pwError}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="currentPassword" className={labelClass}>Senha atual</label>
+            <div className={fieldWrap}>
+              <input id="currentPassword" type="password" autoComplete="current-password"
+                placeholder="Digite sua senha atual"
+                value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+                className={inputClass} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="newPassword" className={labelClass}>Nova senha</label>
+            <div className={fieldWrap}>
+              <input id="newPassword" type="password" autoComplete="new-password"
+                placeholder="Mínimo 6 caracteres"
+                value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                className={inputClass} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="confirmPassword" className={labelClass}>Confirmar nova senha</label>
+            <div className={fieldWrap}>
+              <input id="confirmPassword" type="password" autoComplete="new-password"
+                placeholder="Repita a nova senha"
+                value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                className={inputClass} />
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onClick={handleChangePassword} disabled={pwLoading || !currentPassword || !newPassword || !confirmPassword}
+          className={`w-full py-3 rounded-2xl font-bold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-50 ${
+            pwSaved
+              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-400/30"
+              : "bg-zinc-900 hover:bg-zinc-700 text-white shadow-sm hover:-translate-y-0.5"
+          }`}>
+          {pwSaved ? "✓ Senha alterada" : pwLoading ? "Salvando..." : "Alterar senha"}
+        </button>
+      </section>
 
       <div className="pt-2 border-t border-zinc-100 flex flex-col gap-1">
         <a

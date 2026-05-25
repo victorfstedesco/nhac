@@ -90,14 +90,9 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">
-              Senha
-            </label>
-            <Link href="/auth/forgot-password" className="text-xs font-semibold text-brand hover:text-brand-dark transition-colors">
-              Esqueceu a senha?
-            </Link>
-          </div>
+          <label htmlFor="password" className="text-xs font-bold text-zinc-600 uppercase tracking-widest">
+            Senha
+          </label>
           <div className="group flex items-center gap-3 border border-zinc-200 bg-zinc-50 px-4 py-3.5 rounded-2xl
             focus-within:border-brand/50 focus-within:ring-4 focus-within:ring-brand/10 focus-within:bg-white transition-all duration-200">
             <LockIcon />

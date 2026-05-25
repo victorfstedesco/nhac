@@ -4,12 +4,8 @@ import { getSessionFromRequest } from "@/lib/auth";
 const PUBLIC_PATHS = [
   "/auth/login",
   "/auth/register",
-  "/auth/forgot-password",
-  "/auth/reset-password",
   "/api/auth/login",
   "/api/auth/register",
-  "/api/auth/forgot-password",
-  "/api/auth/reset-password",
 ];
 
 export async function proxy(req: NextRequest) {
